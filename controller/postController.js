@@ -1,13 +1,12 @@
 import Post from "../models/Post.js";
 import Comment from "../models/Comments.js";
-import cloudinary from "../services/cloudinary.js";
 import fs from "fs";
 
 // controllers
 export const createPost = async (req, res) => {
     try {
         const { caption, location } = req.body;
-        const media = req.files.map((file) => {
+        const media = (req.files || []).map((file) => {
             return {
                 mediaType: file.mimetype.startsWith("image") ? "image" : "video",
                 mediaUrl: file.path
