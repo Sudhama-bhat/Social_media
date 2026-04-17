@@ -12,6 +12,17 @@ const app = express()
 app.use(express.json()) 
 
 mongoConnection();
+
+app.use(async (req, res, next) => {
+    try {
+        await mongoConnection();
+        next();
+    } catch (err) {
+        console.error("DB Middleware error:", err);
+        res.status(500).json({ success: false, message: "Database connection failed" });
+    }
+});
+
 app.use(cookieParser())
 app.use(cors({
     origin:['http://localhost:5173', 'http://localhost:5174'],
