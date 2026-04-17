@@ -21,6 +21,7 @@ export const registeruser = async (req, res) => {
     });
 
     if (authError) {
+      console.error("Supabase Auth Error:", authError);
       return res.status(400).json({
         success: false,
         message: authError.message
@@ -48,8 +49,10 @@ export const registeruser = async (req, res) => {
 
     if (profileError) {
       console.error("Error creating profile:", profileError);
-      // We might want to delete the auth user here if profile creation fails, 
-      // but Supabase doesn't make that trivial from a client-side call normally.
+      return res.status(400).json({
+        success: false,
+        message: "Auth user created, but profile creation failed: " + profileError.message
+      });
     }
 
     try {
@@ -119,10 +122,10 @@ export const registeruser = async (req, res) => {
     })
 
   } catch (error) {
-    console.log(error)
+    console.error("Registration Exception:", error);
     res.status(500).json({
       success: false,
-      message: "internal server error!"
+      message: error.message || "internal server error!"
     })
   }
 }
