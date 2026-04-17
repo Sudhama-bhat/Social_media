@@ -55,9 +55,9 @@ export const registeruser = async (req, res) => {
       });
     }
 
-    try {
-      await sendEmail(email, 'welcome to SocialConnect',
-        `<div style="margin:0;padding:0;background-color:#f4f6f8;font-family:Arial,Helvetica,sans-serif;">
+    // Send email in the background to speed up registration response
+    sendEmail(email, 'welcome to SocialConnect',
+      `<div style="margin:0;padding:0;background-color:#f4f6f8;font-family:Arial,Helvetica,sans-serif;">
       <table align="center" width="100%" cellpadding="0" cellspacing="0"
         style="max-width:600px;margin:auto;background:#ffffff;border-radius:10px;
         overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.08);">
@@ -106,10 +106,9 @@ export const registeruser = async (req, res) => {
   
       </table>
     </div>`
-      );
-    } catch (emailError) {
-      console.log('Skipping email send, error or unconfigured sender:', emailError.message);
-    }
+    ).catch(emailError => {
+      console.log('Background email error:', emailError.message);
+    });
 
     res.status(201).json({
       success: true,
