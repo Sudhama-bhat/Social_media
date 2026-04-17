@@ -1,4 +1,7 @@
 import mongoose from "mongoose";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 const mongoConnection = async () => {
     // If we're already connected, don't try to connect again
@@ -15,7 +18,8 @@ const mongoConnection = async () => {
         console.log("📡 Attempting to connect to MongoDB Atlas...");
         
         await mongoose.connect(mongo_url, {
-            serverSelectionTimeoutMS: 5000, // Timeout after 5 seconds instead of 10
+            serverSelectionTimeoutMS: 5000,
+            dbName: 'socialconnect' // Force the database name
         });
 
         console.log("✅ Database connected successfully!");
