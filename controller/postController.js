@@ -1,5 +1,4 @@
-import Post from "../models/Post.js";
-import Comment from "../models/Comments.js";
+import { supabase } from "../config/supabaseClient.js";
 import fs from "fs";
 import cloudinary from "../config/cloudinary.js";
 
@@ -31,21 +30,44 @@ export const createPost = async (req, res) => {
 
         const userId = req.user.id;
 
-        const newPost = await Post.create({
-            caption,
-            userId,
-            location,
-            media
-        });
+        // 1. Insert into posts table
+        const { data: postData, error: postError } = await supabase
+            .from('posts')
+            .insert([
+                {
+                    user_id: userId,
+                    caption,
+                    location
+                }
+            ])
+            .select()
+            .single();
+
+        if (postError) throw postError;
+
+        // 2. Insert into post_media table
+        if (media.length > 0) {
+            const mediaToInsert = media.map(m => ({
+                post_id: postData.id,
+                media_type: m.mediaType,
+                media_url: m.mediaUrl
+            }));
+
+            const { error: mediaError } = await supabase
+                .from('post_media')
+                .insert(mediaToInsert);
+
+            if (mediaError) throw mediaError;
+        }
 
         res.status(201).json({
             success: true,
             message: "Post Created successfully",
-            data: newPost
+            data: { ...postData, media }
         });
 
     } catch (error) {
-        console.error("Cloudinary upload/Database error:", error);
+        console.error("Supabase/Cloudinary error:", error);
         res.status(500).json({
             success: false,
             message: "Error in creating Post",
@@ -56,71 +78,50 @@ export const createPost = async (req, res) => {
 
 export const getAllPosts = async (req, res) => {
     try {
-        const posts = await Post.find()
-            .populate("userId", "name profilePicture")
-            .sort({createdAt: -1})
+        // Fetch posts with profile info and media
+        const { data, error } = await supabase
+            .from('posts')
+            .select(`
+                *,
+                profiles (id, name, profile_picture),
+                post_media (*)
+            `)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Format data to match previous frontend expectation if needed
+        const formattedPosts = data.map(post => ({
+            ...post,
+            userId: post.profiles, // Mapping profile to userId key
+            media: post.post_media
+        }));
 
         res.status(200).json({
             success: true,
-            data: posts
+            data: formattedPosts
         });
     } catch (error) {
+        console.error("Fetch error:", error);
         res.status(500).json({ success: false, message: "Error fetching posts" });
     }
 };
 
 export const getUserPosts = async (req, res) => {
     try {
-        const posts = await Post.find({ userId: req.user.id })
-        .sort({ createdAt: -1 });
-        res.status(200).json({ success: true, data: posts });
+        const { data, error } = await supabase
+            .from('posts')
+            .select(`
+                *,
+                post_media (*)
+            `)
+            .eq('user_id', req.user.id)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        res.status(200).json({ success: true, data });
     } catch (error) {
         res.status(500).json({ success: false, message: "Error fetching user posts" });
     }
-};
-
-
-// export const createPost = async (req, res) => {
-//     try {
-//         const { caption, location } = req.body;
-//         const media = []
-
-//             for (const file of req.files) {
-//                 // Upload each file to Cloudinary
-//                 const result = await cloudinary.uploader.upload(file.path, {
-//                     folder: "social_connect_posts"
-//                 });
-//                 media.push({
-//                     mediaType: file.mimetype.startsWith("image") ? "image" : "video",
-//                     mediaUrl: result.secure_url
-//                 })
-//                 // Optionally, you can delete the local file after uploading to Cloudinary
-//                 fs.unlinkSync(file.path);
-
-//             }
-
-//         const userId = req.user.id;
-
-//         const newPost = await Post.create({
-//             caption,
-//             userId,
-//             location,
-//             media
-//         })
-
-//         res.status(201).json({
-//             success: true,
-//             message: "Post Created successfully",
-//             data: newPost
-//         })
-
-
-//     } catch (error) {
-//         console.log(error)
-//         res.status(500).json({
-//             success: false,
-//             message: "Error in creating Post",
-//         })
-
-//     }
-// }
+};

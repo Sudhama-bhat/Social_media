@@ -11,17 +11,8 @@ dotenv.config()
 const app = express()
 app.use(express.json()) 
 
-mongoConnection();
-
-app.use(async (req, res, next) => {
-    try {
-        await mongoConnection();
-        next();
-    } catch (err) {
-        console.error("DB Middleware error:", err);
-        res.status(500).json({ success: false, message: "Database connection failed" });
-    }
-});
+// MongoDB connection removed in favor of Supabase
+// mongoConnection();
 
 app.use(cookieParser())
 app.use(cors({

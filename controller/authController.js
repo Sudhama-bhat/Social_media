@@ -1,5 +1,4 @@
-import User from '../models/User.js'
-import bcrypt from 'bcrypt'
+import { supabase } from '../config/supabaseClient.js'
 import sendEmail from '../services/emailSet.js';
 import jwt from 'jsonwebtoken'
 
@@ -9,21 +8,49 @@ export const registeruser = async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
 
-    const userexist = await User.findOne({ email });
-    if (userexist) {
+    // 1. Sign up user with Supabase Auth
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: name,
+          phone: phone
+        }
+      }
+    });
+
+    if (authError) {
       return res.status(400).json({
         success: false,
-        message: " User already exist!"
-      })
+        message: authError.message
+      });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const userData = await User.create({
-      name,
-      email,
-      phone,
-      password: hashedPassword
-    })
+    if (!authData.user) {
+      return res.status(400).json({
+        success: false,
+        message: "Signup failed: No user data returned."
+      });
+    }
+
+    // 2. Create entry in public.profiles table
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert([
+        {
+          id: authData.user.id,
+          name,
+          email,
+          phone
+        }
+      ]);
+
+    if (profileError) {
+      console.error("Error creating profile:", profileError);
+      // We might want to delete the auth user here if profile creation fails, 
+      // but Supabase doesn't make that trivial from a client-side call normally.
+    }
 
     try {
       await sendEmail(email, 'welcome to SocialConnect',
@@ -83,8 +110,12 @@ export const registeruser = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: " Data added successfully!",
-      data: userData
+      message: "Data added successfully!",
+      data: {
+        id: authData.user.id,
+        email: authData.user.email,
+        name
+      }
     })
 
   } catch (error) {
@@ -101,48 +132,54 @@ export const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const userExist = await User.findOne({ email: email });
-    if (!userExist) {
-      return res.status(404).json({
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      return res.status(401).json({
         success: false,
-        message: "User not found with this email!"
-      })
+        message: error.message
+      });
     }
 
-    const isPasswordMatch = await bcrypt.compare(password, userExist.password);
-    if (!isPasswordMatch) {
-      return res.status(500).json({
-        success: false,
-        message: "invalid password!"
-      })
-    }
+    // We can still generate a custom token if needed for the legacy cookie flow,
+    // or just use Supabase's access token.
+    // For minimal frontend changes, we'll keep the custom JWT for now, 
+    // but fetch the profile name first.
+    
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('name')
+      .eq('id', data.user.id)
+      .single();
 
-    //token generate 
-    //const token = await jwt.sign({payload}, SECRETKEY, {options})
-    // structure of token => header.payload.signature
-    // header => metadata about token, payload=> data, 
-    // signature=> secret key + header + payload
-    const token = await jwt.sign({ id: userExist._id, name: userExist.name }, SECRET_KEY, {expiresIn:'7d'});
+    const token = await jwt.sign({ id: data.user.id, name: profile?.name || data.user.email }, SECRET_KEY, { expiresIn: '7d' });
 
-    //response.cookie(name, value, {options})
-    res.cookie("mycookie",token,{
-        httpOnly: true,
-        secure:false,
-        sameSite:'lax',
-        maxAge: 7*24*60*60*1000
+    res.cookie("mycookie", token, {
+      httpOnly: true,
+      secure: false, // Set to true in production
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000
     })
 
     res.status(200).json({
       success: true,
-      message: "Login successfull!",
-      token: token
+      message: "Login successful!",
+      token: token,
+      user: {
+        id: data.user.id,
+        email: data.user.email,
+        name: profile?.name
+      }
     })
 
   } catch (error) {
     console.log(error);
     res.status(500).json({
       success: false,
-      message: "failed to add User!"
+      message: "Login failed!"
     })
   }
-}
+}

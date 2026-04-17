@@ -58,7 +58,7 @@ const Home = () => {
           ) : posts.length > 0 ? (
             <div className="animate-fade-in">
               {posts.map(post => (
-                <PostCard key={post._id} post={post} />
+                <PostCard key={post.id} post={post} />
               ))}
             </div>
           ) : (
