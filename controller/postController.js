@@ -1,17 +1,33 @@
 import Post from "../models/Post.js";
 import Comment from "../models/Comments.js";
 import fs from "fs";
+import cloudinary from "../config/cloudinary.js";
 
 // controllers
 export const createPost = async (req, res) => {
     try {
         const { caption, location } = req.body;
-        const media = (req.files || []).map((file) => {
-            return {
-                mediaType: file.mimetype.startsWith("image") ? "image" : "video",
-                mediaUrl: file.path
+        const media = [];
+
+        if (req.files && req.files.length > 0) {
+            for (const file of req.files) {
+                // Upload each file to Cloudinary
+                const result = await cloudinary.uploader.upload(file.path, {
+                    folder: "social_connect_posts",
+                    resource_type: "auto" // Handles image and video automatically
+                });
+
+                media.push({
+                    mediaType: file.mimetype.startsWith("image") ? "image" : "video",
+                    mediaUrl: result.secure_url
+                });
+
+                // Delete the local temporary file after uploading to Cloudinary
+                if (fs.existsSync(file.path)) {
+                    fs.unlinkSync(file.path);
+                }
             }
-        })
+        }
 
         const userId = req.user.id;
 
@@ -20,23 +36,22 @@ export const createPost = async (req, res) => {
             userId,
             location,
             media
-        })
+        });
 
         res.status(201).json({
             success: true,
             message: "Post Created successfully",
             data: newPost
-        })
+        });
 
     } catch (error) {
-        console.log(error)
+        console.error("Cloudinary upload/Database error:", error);
         res.status(500).json({
             success: false,
             message: "Error in creating Post",
-        })
-
+        });
     }
-}
+};
 
 
 export const getAllPosts = async (req, res) => {

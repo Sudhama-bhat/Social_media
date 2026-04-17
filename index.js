@@ -33,3 +33,5 @@ app.listen(PORT,()=>{
     console.log("My new server running on "+PORT)
 })
 
+export default app;
+
