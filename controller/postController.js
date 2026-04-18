@@ -72,10 +72,11 @@ export const createPost = async (req, res) => {
         });
 
     } catch (error) {
-        console.error("Supabase/Cloudinary error:", error);
+        console.error("Post Creation Exception:", error);
         res.status(500).json({
             success: false,
             message: "Error in creating Post",
+            error: error.message || error
         });
     }
 };
@@ -112,8 +113,12 @@ export const getAllPosts = async (req, res) => {
             data: formattedPosts
         });
     } catch (error) {
-        console.error("Fetch error:", error);
-        res.status(500).json({ success: false, message: "Error fetching posts" });
+        console.error("Fetch Posts Exception:", error);
+        res.status(500).json({ 
+            success: false, 
+            message: "Error fetching posts",
+            error: error.message || error 
+        });
     }
 };
 

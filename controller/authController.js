@@ -124,7 +124,8 @@ export const registeruser = async (req, res) => {
     console.error("Registration Exception:", error);
     res.status(500).json({
       success: false,
-      message: error.message || "internal server error!"
+      message: error.message || "internal server error!",
+      error: error
     })
   }
 }
@@ -178,10 +179,11 @@ export const loginUser = async (req, res) => {
     })
 
   } catch (error) {
-    console.log(error);
+    console.error("Login Exception:", error);
     res.status(500).json({
       success: false,
-      message: "Login failed!"
+      message: "Login failed!",
+      error: error.message || error
     })
   }
 }
