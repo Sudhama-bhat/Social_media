@@ -89,7 +89,7 @@ export const getAllPosts = async (req, res) => {
             .from('posts')
             .select(`
                 *,
-                profiles (id, name, profile_picture),
+                profiles!user_id (id, name, profile_picture),
                 post_media (*)
             `)
             .order('created_at', { ascending: false });
