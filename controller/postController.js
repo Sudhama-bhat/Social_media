@@ -43,7 +43,12 @@ export const createPost = async (req, res) => {
             .select()
             .single();
 
-        if (postError) throw postError;
+        if (postError) {
+            console.error("Supabase Post Insertion Error:", postError);
+            throw postError;
+        }
+
+        console.log("Post created successfully in Supabase:", postData.id);
 
         // 2. Insert into post_media table
         if (media.length > 0) {
@@ -88,7 +93,12 @@ export const getAllPosts = async (req, res) => {
             `)
             .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        if (error) {
+            console.error("Supabase Fetch Posts Error:", error);
+            throw error;
+        }
+
+        console.log(`Fetched ${data?.length || 0} posts from Supabase`);
 
         // Format data to match previous frontend expectation if needed
         const formattedPosts = data.map(post => ({
