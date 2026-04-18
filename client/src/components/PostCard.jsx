@@ -18,6 +18,9 @@ const PostCard = ({ post }) => {
   
   // Backend provides relative path like uploads/date-file.jpg
   // We prepend the backend URL unless it's already an absolute URL (like cloudinary)
+  const getMediaUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
     // Prefixes the media URL if necessary. On Vercel, relative paths work due to rewrites.
     const normalizedPath = url.replace(/\\/g, '/');
     return normalizedPath.startsWith('/') ? normalizedPath : `/${normalizedPath}`;
